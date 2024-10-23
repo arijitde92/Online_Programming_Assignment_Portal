@@ -1,0 +1,72 @@
+<!-- view_assignment.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assignment Details</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <h1>Assignment: {{ assignment.topic }}</h1>
+    <!-- Display Assignment Details -->
+    <p>Total Marks: {{ assignment.total_marks }}</p>
+    <p>Number of Questions Allowed: {{ assignment.num_questions }}</p>
+    <p>Assignment date for Group 1: {{ assignment.date1 }}</p>
+    <p>Assignment date for Group 2: {{ assignment.date2 }}</p>
+    <p>Due Date for Group 1: {{ assignment.due_date1 }}</p>
+    <p>Due Date for Group 2: {{ assignment.due_date2 }}</p>
+    <p>Number of Questions Allowed: {{ assignment.num_questions }}</p>
+    <br>
+    <!-- Button to Edit Assignment -->
+    <a href="{{ url_for('edit_assignment', assignment_id=assignment.id) }}" class="btn btn-primary">Edit Assignment</a>
+    <br>
+    <h2>Questions:</h2>
+    <ul>
+        {% for detail in question_details %}
+            <li>
+                <h3>Question:</h3> {{ detail.question.question }}
+                <br>
+                <strong>Marks:</strong> {{ detail.question.marks }}
+                <a href="{{ url_for('edit_question', question_id=detail.question.id) }}">Edit Question</a>
+                <h3>Test Cases:</h3>
+                <ul>
+                    {% for testcase in detail.testcases %}
+                        <li>
+                            Test Case: {{ testcase.case }} - Expected Output: {{ testcase.output }}
+                            <a href="{{ url_for('edit_testcase', testcase_id=testcase.id) }}">Edit</a>
+                        </li>
+                    {% else %}
+                        <li>No test cases available for this question.</li>
+                    {% endfor %}
+                </ul>
+                <p>Current Total Marks of Questions: {{ total_marks }}</p>
+            </li>
+        {% endfor %}
+    </ul>
+    <!-- Check conditions: Number of questions and total marks -->
+    {% if questions|length >= assignment.num_questions %}
+        <p class="text-warning">You have reached the maximum number of allowed questions for this assignment.</p>
+    {% elif total_marks >= assignment.total_marks %}
+        <p class="text-warning">The total marks of the questions exceed the assignment's total allowed marks.</p>
+    {% else %}
+        <!-- Button to add new questions -->
+        <h3>Add New Question</h3>
+        <a href="{{ url_for('add_questions', assignment_id=assignment.id) }}" class="btn btn-primary">Add Question</a>
+    {% endif %}
+    <br>
+    <a href="{{ url_for('view_assignments') }}">Back to Assignments</a>
+    <br>
+    <!-- Add a link to go back to the teacher dashboard -->
+    <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary">Back to Teacher Dashboard</a>
+    <br>
+    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+</body>
+</html>

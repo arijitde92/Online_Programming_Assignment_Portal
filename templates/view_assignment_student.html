@@ -1,0 +1,73 @@
+<!-- view_assignment.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assignment Details</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <h1>Assignment: {{ assignment.topic }}</h1>
+    <!-- Display Assignment Details -->
+    <p>Total Marks: {{ assignment.total_marks }}</p>
+    <p>Number of Questions Allowed: {{ assignment.num_questions }}</p>
+    <p>Assignment date for Group 1: {{ assignment.date1 }}</p>
+    <p>Assignment date for Group 2: {{ assignment.date2 }}</p>
+    <p>Due Date for Group 1: {{ assignment.due_date1 }}</p>
+    <p>Due Date for Group 2: {{ assignment.due_date2 }}</p>
+    <br>
+    <!-- Button to Edit Assignment -->
+    {% if student_id is none %}
+        <a href="{{ url_for('edit_assignment', assignment_id=assignment.id) }}" class="btn btn-primary">Edit Assignment</a>
+    {% endif %}
+    <h2>Questions:</h2>
+    <ul>
+        {% for detail in question_details %}
+            <li>
+                <h3>Question:</h3> {{ detail.question.question }}
+                <strong>Marks:</strong> {{ detail.question.marks }}
+                <h3>Test Cases:</h3>
+                <ul>
+                    {% for testcase in detail.testcases %}
+                        <li>
+                            Test Case: {{ testcase.case }} - Expected Output: {{ testcase.output }}
+                            <br>
+                            <!-- Check if the submission exists for this test case -->
+                            {% if detail.testcase_submissions[testcase.id] %}
+                                <strong>Your Output:</strong> {{ detail.testcase_submissions[testcase.id] }}
+                            {% else %}
+                                <strong>Your Output:</strong> No submission for this test case.
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+
+                <!-- Form to upload .c file for the question -->
+                <h4>Submit Your Answer:</h4>
+                <form action="{{ url_for('upload_submission', question_id=detail.question.id, assignment_id=assignment.id) }}" method="POST" enctype="multipart/form-data">
+                    <label for="file">Upload .c file:</label>
+                    <input type="file" name="file" accept=".c" required>
+                    <button type="submit">Submit</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+    <br>
+    <a href="{{ url_for('student_dashboard', student_id=student_id) }}">Back to Student Dashboard</a>
+    <br>
+    <!-- Add a link to go back to the teacher dashboard -->
+    {% if student_id is none %}
+        <a href="{{ url_for('teacher_dashboard') }}" class="btn btn-secondary">Back to Teacher Dashboard</a>
+    {% endif %}
+    <br>
+    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+</body>
+</html>

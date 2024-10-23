@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Dashboard</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <h1>Student Dashboard</h1>
+    <h2>Welcome {{ student_data.name }}</h2>
+    <p>Not {{ student_data.name }}? <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></p>
+    <h3>Assignments</h3>
+    {% if assignments|length >= 1 %}
+        <ul>
+            {% for assignment in assignments %}
+                <li>
+                    {{ assignment.topic }}
+                    <a href="{{ url_for('view_assignment_student', assignment_id=assignment.id) }}">View Questions</a>
+                </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>You currently have no upcoming assignments</p>
+    {% endif %}
+</body>
+</html>

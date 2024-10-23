@@ -1,0 +1,44 @@
+<!-- add_questions.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Questions</title>
+</head>
+<body>
+    <h1>Add Questions for Assignment: {{ assignment.topic }}</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST">
+        <label for="question">Question:</label>
+        <textarea name="question" rows="20" cols="50" placeholder="Type question here" required></textarea>
+        <br>
+        <label for="marks">Marks:</label>
+        <input type="number" name="marks" required><br>
+
+        <input type="submit" value="Add Question">
+    </form>
+
+    <h2>Existing Questions:</h2>
+    <ul>
+        {% for question in questions %}
+            <li>{{ question.question }} - Marks: {{ question.marks }}
+                <a href="{{ url_for('add_test_cases', question_id=question.id) }}">Add Test Cases</a>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <a href="{{ url_for('create_assignment') }}">Back to Create Assignment</a>
+    <br>
+    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+</body>
+</html>

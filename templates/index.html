@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Welcome to the Online Assignment Evaluator</h1>
+
+    <!-- Navigation Options -->
+    <a href="{{ url_for('student_signup') }}">Sign Up as Student</a> <br>
+    <a href="{{ url_for('student_login') }}">Login as Student</a> <br>
+    <a href="{{ url_for('teacher_login') }}">Login as Teacher</a>
+{% endblock %}

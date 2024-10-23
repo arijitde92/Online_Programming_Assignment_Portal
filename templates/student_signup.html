@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Sign Up</title>
+</head>
+<body>
+    <h1>Student Sign Up</h1>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        {{ form.name.label }} {{ form.name(size=20) }} <br>
+        {{ form.roll.label }} {{ form.roll(size=20) }} <br>
+        {{ form.exam_roll.label }} {{ form.exam_roll(size=20) }} <br>
+        {{ form.group.label }} {{ form.group }} <br>
+        {{ form.email_id.label }} {{ form.email_id(size=20) }} <br>
+        {{ form.password.label }} {{ form.password(size=20) }} <br>
+        {{ form.submit() }}
+    </form>
+</body>
+</html>

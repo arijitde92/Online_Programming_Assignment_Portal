@@ -1,0 +1,28 @@
+<!-- edit_testcase.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Test Case</title>
+</head>
+<body>
+    <h1>Edit Test Case</h1>
+
+    <form method="POST">
+        <label for="case">Test Case:</label>
+        <input type="text" name="case" value="{{ testcase.case }}" required>
+
+        <label for="output">Expected Output:</label>
+        <input type="text" name="output" value="{{ testcase.output }}" required>
+
+        <button type="submit">Update Test Case</button>
+    </form>
+
+    <a href="{{ url_for('view_assignment', assignment_id=testcase.question.ass_id) }}">Back to Assignment</a>
+    <br>
+    <!-- Add a link to go back to the teacher dashboard -->
+    <a href="{{ url_for('teacher_dashboard') }}">Back to Teacher Dashboard</a>
+    <br>
+    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
+</body>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=True) %}
+        {% if messages %}
+            <ul>
+            {% for category, message in messages %}
+                <li class="alert alert-{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <h1>Student Login</h1>
+    <form method="POST">
+        {{ form.hidden_tag() }}
+        {{ form.email_id.label }} {{ form.email_id(size=20) }} <br>
+        {{ form.password.label }} {{ form.password(size=20) }} <br>
+        {{ form.submit() }}
+    </form>
+</body>
+</html>

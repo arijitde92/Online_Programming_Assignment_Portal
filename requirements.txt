@@ -6,3 +6,6 @@ flask_wtf
 python-dotenv
 Werkzeug
 WTForms
+flask-bcrypt
+flask-login
+SQLAlchemy

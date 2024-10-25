@@ -1,0 +1,36 @@
+<!-- view_assignment.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Assignment Details</title>
+</head>
+<body>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    {% endwith %}
+    <h1>Code output</h1>
+    <h2>Question:</h2><br>
+    <label for="question">
+        <textarea name="question" rows="10" cols="100">{{ question }}</textarea>
+    </label>
+    <br>
+    <h2>Input:</h2><br>
+    {% for test_case in submissions %}
+    <ol>
+        <li>Test Case:<br>{{ test_case.case }}<br>Desired output: {{ test_case.output }}<br>Your Output: {{ test_case.st_output }}<br>Status: {{ test_case.status }}</li>
+    </ol>
+    {% endfor %}
+    <br>
+    <a href="{{ url_for('student_dashboard', student_id=student_id) }}">Back to Student Dashboard</a>
+    <br>
+    <a href="{{ url_for('view_assignment_student', assignment_id=assignment_id) }}">Back to Assignments</a>
+    <br>
+</body>
+</html>

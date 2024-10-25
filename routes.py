@@ -1,13 +1,16 @@
-from flask import render_template, request, redirect, url_for, flash, session, make_response
+from flask import render_template, request, redirect, url_for, flash, session, make_response, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 from subprocess import Popen, PIPE, run
+from sqlalchemy.sql import func
 from forms import StudentSignUpForm, StudentLoginForm, TeacherLoginForm
 from models import Student, Teacher, Assignment, Question, Testcase, Submission
 from app import app, db, bcrypt
 from datetime import datetime
+from io import StringIO
 import os
-import tempfile
+import csv
+
 
 # Configuration for file upload
 UPLOAD_FOLDER = 'uploads'
@@ -17,7 +20,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'student_login'  # Redirect to 'login' view if not authenticated
+login_manager.login_view = 'index'  # Redirect to 'login' view if not authenticated
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -110,8 +113,8 @@ def student_dashboard(student_id):
     else:
         student_data = Student.query.filter_by(id=student_id).first()
         group = student_data.group
-        # current_date = datetime.today().strftime('%Y-%m-%d')
-        current_date = '2024-10-30'
+        current_date = datetime.today().strftime('%Y-%m-%d')
+        # current_date = '2024-10-30'
         if group[-1] == '1':
             assignments = Assignment.query.filter(Assignment.date1 <= current_date).all()
         else:
@@ -313,12 +316,14 @@ def view_assignment(assignment_id):
         testcases = Testcase.query.filter_by(ques_id=question.id).all()
         question_details.append({
             'question': question,
-            'testcases': testcases
+            'testcases': testcases,
         })
+        total_question_marks += question.marks
     return render_template('view_assignment.html',
                            assignment=assignment,
                            student_id=None,
                            question_details=question_details,
+                           total_marks=total_question_marks,
                            submission_details=None)
 
 @app.route('/view_assignment_student/<int:assignment_id>', methods=['GET'])
@@ -331,17 +336,24 @@ def view_assignment_student(assignment_id):
     current_student_id = session['student_id']
     assignment = Assignment.query.get_or_404(assignment_id)
     questions = Question.query.filter_by(ass_id=assignment_id).all()
-
+    student_data = Student.query.get_or_404(current_student_id)
+    student_group = student_data.group
+    current_date = datetime.today().date()
+    if student_group == 'A1':
+        is_due_date_passed = True if current_date > assignment.due_date1 else False
+    else:
+        is_due_date_passed = True if current_date > assignment.due_date2 else False
     question_details = []
-    submission_details = {}
+    total_maks_gained = 0
     for question in questions:
         testcases = Testcase.query.filter_by(ques_id=question.id).all()
         testcase_submissions = {}
         for testcase in testcases:
             submission = Submission.query.filter_by(st_id=current_student_id, ques_id=question.id,
-                                                    test_case_id=testcase.id).first()
+                                                    test_case_id=testcase.id).order_by(Submission.id.desc()).first()
             if submission:
-                testcase_submissions[testcase.id] = submission.output
+                total_maks_gained += submission.marks
+                testcase_submissions[testcase.id] = (submission.output, submission.marks)
             else:
                 testcase_submissions[testcase.id] = None  # No submission found for this test case
 
@@ -354,7 +366,9 @@ def view_assignment_student(assignment_id):
     return render_template('view_assignment_student.html',
                            assignment=assignment,
                            question_details=question_details,
-                           student_id=current_student_id)
+                           student_id=current_student_id,
+                           total_marks_gained=total_maks_gained,
+                           due_date_passed=is_due_date_passed)
 
 @app.route('/delete_assignment/<int:assignment_id>', methods=['POST'])
 def delete_assignment(assignment_id):
@@ -433,14 +447,14 @@ def upload_submission(question_id, assignment_id):
                 run_process = run([filepath + '.out'], capture_output=True)
                 output = run_process.stdout
                 errors = run_process.stderr
-            elif ';' in test_case:
+            elif ';' in test_case:  # Contains multiple inputs
                 test_case = '\n'.join(test_case.split(';'))
                 print("Running program:", filepath + '.out', '<', test_case)
                 run_process = run([filepath + '.out'], capture_output=True, text=True,
                                   input=test_case, encoding='utf-8')
                 output = run_process.stdout
                 errors = run_process.stderr
-            else:
+            else:   # Contains single input
                 print("Running program:", filepath + '.out', '<', test_case)
                 run_process = run([filepath + '.out'], capture_output=True, text=True,
                                   input=test_case, encoding='utf-8')
@@ -451,13 +465,13 @@ def upload_submission(question_id, assignment_id):
             if run_process.returncode != 0:
                 flash(f"Runtime error: {errors.decode('utf-8')}", "error")
                 return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
-            else:
+            else:   # Code ran without runtime errors
                 output = output.decode('utf-8')
                 print("Run output:", output)
-                if desired_output == '<>':
+                if desired_output == '<>':  # Any output is acceptable
                     marks = float(question_data.marks)/len(test_cases)
                     # test_cases_passed = -1
-                elif ';' in desired_output:
+                elif ';' in desired_output: # Contains multiple outputs
                     desired_output = '\n'.join(desired_output.split(';'))
                     if output == desired_output:
                         # test_cases_passed += 1
@@ -465,7 +479,7 @@ def upload_submission(question_id, assignment_id):
                     else:
                         print(f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
                         marks = 0.0
-                else:
+                else:   # Contains single output
                     if output == desired_output:
                         # test_cases_passed += 1
                         marks = float(question_data.marks)/len(test_cases)
@@ -489,3 +503,180 @@ def upload_submission(question_id, assignment_id):
 
     flash('Invalid file format. Only .c files are allowed.', 'error')
     return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+
+@app.route('/run_code/<int:question_id>/<int:assignment_id>', methods=['POST'])
+@login_required
+def run_code(question_id, assignment_id):
+    current_student_id = session['student_id']
+    if 'file' not in request.files:
+        flash('No file part')
+        return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+
+    file = request.files['file']
+    if file.filename == '':
+        flash('No selected file')
+        return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(f"{assignment_id}_{current_student_id}_{question_id}.c")
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        # Run the .c file evaluation (this is an example, adjust it to your system)
+        compile_process = Popen(['gcc', filepath, '-o', filepath + '.out'], stdout=PIPE, stderr=PIPE)
+        compile_output, compile_errors = compile_process.communicate()
+
+        if compile_process.returncode != 0:
+            flash(f"Compilation error: {compile_errors.decode('utf-8')}", "error")
+            return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+        else:
+            print("Compile output:", compile_output)
+
+        # Now, run the compiled program with test cases
+        test_cases = Testcase.query.filter_by(ques_id=question_id).all()
+        question_data = Question.query.filter_by(id=question_id).first()
+        submissions = []
+        for idx, test_case_row in enumerate(test_cases):
+            submission_data = dict()
+            print(f"TEST CASE {idx + 1}:")
+            test_case = test_case_row.case
+            if '<>' in test_case:  # No input required
+                print("Running program:", filepath + '.out')
+                run_process = run([filepath + '.out'], capture_output=True, encoding='utf-8')
+                output = run_process.stdout
+                errors = run_process.stderr
+            elif ';' in test_case:  # Contains multiple inputs
+                test_case = '\n'.join(test_case.split(';'))
+                print("Running program:", filepath + '.out', '<', test_case)
+                run_process = run([filepath + '.out'], capture_output=True, text=True,
+                                  input=test_case, encoding='utf-8')
+                output = run_process.stdout
+                errors = run_process.stderr
+            else:  # Contains single input
+                print("Running program:", filepath + '.out', '<', test_case)
+                run_process = run([filepath + '.out'], capture_output=True, text=True,
+                                  input=test_case, encoding='utf-8')
+                output = run_process.stdout
+                errors = run_process.stderr
+            output = output[1:]
+            desired_output = test_case_row.output
+            submission_data['case'] = test_case
+            submission_data['output'] = desired_output
+            submission_data['st_output'] = output
+            if run_process.returncode != 0:
+                flash(f"Runtime error: {errors}", "error")
+                return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+            else:  # Code ran without runtime errors
+                output = output
+                print("Run output:", output)
+                if desired_output == '<>':  # Any output is acceptable
+                    submission_data['status'] = "Correct"
+                elif ';' in desired_output:  # Contains multiple outputs
+                    desired_output = '\n'.join(desired_output.split(';'))
+                    if output == desired_output:
+                        submission_data['status'] = "Correct"
+                    else:
+                        print(
+                            f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                        submission_data['status'] = "Incorrect"
+                else:  # Contains single output
+                    try:
+                        output = float(output)
+                        desired_output = float(desired_output)
+                        if output == desired_output:
+                            submission_data['status'] = "Correct"
+                        else:
+                            print(
+                                f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                            submission_data['status'] = "Incorrect"
+                    except Exception as err:
+                        if output == desired_output:
+                            submission_data['status'] = "Correct"
+                        else:
+                            print(
+                                f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                            submission_data['status'] = "Incorrect"
+                submissions.append(submission_data)
+
+        return render_template('run_code.html',
+                               assignment_id=assignment_id,
+                               student_id=current_student_id,
+                               question=question_data.question,
+                               submissions=submissions
+                               )
+
+
+@app.route('/view_all_student_marks', methods=['GET'])
+def view_all_student_marks():
+    students = Student.query.all()
+    assignments = Assignment.query.all()
+
+    # Collect marks for each student for each assignment
+    student_marks = {}
+    for student in students:
+        student_data = {
+            'name': student.name,
+            'roll': student.roll,
+            'group': student.group,
+            'assignments': []
+        }
+
+        for assignment in assignments:
+            # Check if submission exists for student and assignment
+            total_marks = db.session.query(func.sum(Submission.marks)) \
+                .filter(
+                Submission.st_id == student.id,
+                Submission.ass_id == assignment.id
+            ).scalar()
+
+            # Fallback to 0 if no submission
+            total_marks = total_marks if total_marks is not None else 0
+
+            assignment_info = {
+                'topic': assignment.topic,
+                'date': assignment.date1 if student.group == 'A1' else assignment.date2,
+                'marks': total_marks
+            }
+            student_data['assignments'].append(assignment_info)
+
+        student_marks[student.id] = student_data
+
+    return render_template(
+        'view_all_student_marks.html',
+        student_marks=student_marks,
+        assignments=assignments
+    )
+
+
+@app.route('/download_group_csv/<int:group>')
+def download_group_csv(group):
+    # Determine the student group and due date based on the group parameter
+    group_name = 'A1' if group == 1 else 'A2'
+    date_field = 'date1' if group == 1 else 'date2'
+
+    # Fetch data for the specified group of students
+    students = Student.query.filter_by(group=group_name).all()
+    assignments = Assignment.query.all()
+
+    # Create the CSV data in memory
+    csv_data = StringIO()
+    writer = csv.writer(csv_data)
+
+    # Write header row with dynamic assignment days and dates
+    writer.writerow(
+        ['Sl. No.', 'Student Name', 'Student Roll'] + [f"Day {i + 1} ({a.topic}, {getattr(a, date_field)})" for i, a in
+                                                       enumerate(assignments)])
+
+    # Write student data for each student in the group
+    for index, student in enumerate(students, start=1):
+        row = [index, student.name, student.roll]
+        for assignment in assignments:
+            submission = Submission.query.filter_by(st_id=student.id, ass_id=assignment.id).all()
+            total_marks = sum(sub.marks for sub in submission) if submission else 0
+            row.append(total_marks)
+        writer.writerow(row)
+
+    # Return the CSV data as a downloadable response
+    csv_data.seek(0)
+    filename = f"Group_{group_name}_Marks.csv"
+    return Response(csv_data, mimetype='text/csv', headers={"Content-Disposition": f"attachment;filename={filename}"})

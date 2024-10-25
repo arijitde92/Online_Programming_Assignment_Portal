@@ -23,6 +23,7 @@
     <p>Assignment date for Group 2: {{ assignment.date2 }}</p>
     <p>Due Date for Group 1: {{ assignment.due_date1 }}</p>
     <p>Due Date for Group 2: {{ assignment.due_date2 }}</p>
+    <p>Total Marks gained: {{ total_marks_gained }}</p>
     <br>
     <!-- Button to Edit Assignment -->
     {% if student_id is none %}
@@ -38,25 +39,35 @@
                 <ul>
                     {% for testcase in detail.testcases %}
                         <li>
-                            Test Case: {{ testcase.case }} - Expected Output: {{ testcase.output }}
+                            <strong>Test Case:</strong> {{ testcase.case }}
+                            <br>
+                            <strong>Expected Output:</strong> {{ testcase.output }}
                             <br>
                             <!-- Check if the submission exists for this test case -->
                             {% if detail.testcase_submissions[testcase.id] %}
-                                <strong>Your Output:</strong> {{ detail.testcase_submissions[testcase.id] }}
+                                <strong>Your Output:</strong> {{ detail.testcase_submissions[testcase.id][0] }}
+                                <strong>Marks:</strong> {{ detail.testcase_submissions[testcase.id][1] }}
                             {% else %}
                                 <strong>Your Output:</strong> No submission for this test case.
                             {% endif %}
                         </li>
                     {% endfor %}
                 </ul>
-
-                <!-- Form to upload .c file for the question -->
-                <h4>Submit Your Answer:</h4>
-                <form action="{{ url_for('upload_submission', question_id=detail.question.id, assignment_id=assignment.id) }}" method="POST" enctype="multipart/form-data">
-                    <label for="file">Upload .c file:</label>
-                    <input type="file" name="file" accept=".c" required>
-                    <button type="submit">Submit</button>
-                </form>
+                {% if not due_date_passed %}
+                    <h4>Run Code</h4>
+                    <form action="{{ url_for('run_code', question_id=detail.question.id, assignment_id=assignment.id) }}" method="POST" enctype="multipart/form-data">
+                        <label for="file">Upload .c file:</label>
+                        <input type="file" name="file" accept=".c" required>
+                        <button type="submit">Submit</button>
+                    </form>
+                    <!-- Form to upload .c file for the question -->
+                    <h4>Submit Your Answer:</h4>
+                    <form action="{{ url_for('upload_submission', question_id=detail.question.id, assignment_id=assignment.id) }}" method="POST" enctype="multipart/form-data">
+                        <label for="file">Upload .c file:</label>
+                        <input type="file" name="file" accept=".c" required>
+                        <button type="submit">Submit</button>
+                    </form>
+                {% endif %}
             </li>
         {% endfor %}
     </ul>

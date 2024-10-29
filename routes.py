@@ -3,6 +3,8 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 from werkzeug.utils import secure_filename
 from subprocess import Popen, PIPE, run
 from sqlalchemy.sql import func
+from wtforms.validators import optional
+
 from forms import StudentSignUpForm, StudentLoginForm, TeacherLoginForm
 from models import Student, Teacher, Assignment, Question, Testcase, Submission
 from app import app, db, bcrypt
@@ -189,6 +191,10 @@ def add_questions(assignment_id):
     if request.method == 'POST':
         question_text = request.form['question']
         marks = float(request.form['marks'])
+        question_type = request.form['type']
+        optional = False
+        if question_type == 'Optional':
+            optional = True
         # Check if the total marks exceed the allowed limit
         if total_question_marks + marks > assignment.total_marks:
             flash('The total marks of the questions exceed the assignment\'s allowed total marks.', 'danger')
@@ -198,7 +204,8 @@ def add_questions(assignment_id):
         new_question = Question(
             ass_id=assignment_id,
             question=question_text,
-            marks=marks
+            marks=marks,
+            optional=optional
         )
 
         db.session.add(new_question)
@@ -444,7 +451,7 @@ def upload_submission(question_id, assignment_id):
             test_case = test_case_row.case
             if '<>' in test_case:   # No input required
                 print("Running program:", filepath + '.out')
-                run_process = run([filepath + '.out'], capture_output=True)
+                run_process = run([filepath + '.out'], capture_output=True, encoding='utf-8')
                 output = run_process.stdout
                 errors = run_process.stderr
             elif ';' in test_case:  # Contains multiple inputs
@@ -460,14 +467,12 @@ def upload_submission(question_id, assignment_id):
                                   input=test_case, encoding='utf-8')
                 output = run_process.stdout
                 errors = run_process.stderr
-
             desired_output = test_case_row.output
             if run_process.returncode != 0:
-                flash(f"Runtime error: {errors.decode('utf-8')}", "error")
+                flash(f"Runtime error: {errors}", "error")
                 return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             else:   # Code ran without runtime errors
-                output = output.decode('utf-8')
-                print("Run output:", output)
+                # output = output.decode('utf-8')
                 if desired_output == '<>':  # Any output is acceptable
                     marks = float(question_data.marks)/len(test_cases)
                     # test_cases_passed = -1
@@ -558,7 +563,7 @@ def run_code(question_id, assignment_id):
                                   input=test_case, encoding='utf-8')
                 output = run_process.stdout
                 errors = run_process.stderr
-            output = output[1:]
+            # output = output[1:]
             desired_output = test_case_row.output
             submission_data['case'] = test_case
             submission_data['output'] = desired_output

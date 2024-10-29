@@ -51,6 +51,7 @@ class Question(db.Model):
     ass_id = db.Column(db.Integer, db.ForeignKey('Assignment.id'))
     question = db.Column(db.Text, nullable=False)
     marks = db.Column(db.Numeric(5, 2))
+    optional = db.Column(db.Boolean, default=False)
     testcases = db.relationship('Testcase', backref='question', cascade="all, delete", lazy=True)
     def __repr__(self):
         return f"<Question {self.name}>"

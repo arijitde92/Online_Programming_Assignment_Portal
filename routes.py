@@ -1,3 +1,6 @@
+import subprocess
+
+from IPython.utils.capture import capture_output
 from flask import render_template, request, redirect, url_for, flash, session, make_response, Response
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
@@ -451,22 +454,32 @@ def upload_submission(question_id, assignment_id):
             test_case = test_case_row.case
             if '<>' in test_case:   # No input required
                 print("Running program:", filepath + '.out')
-                run_process = run([filepath + '.out'], capture_output=True, encoding='utf-8')
-                output = run_process.stdout
-                errors = run_process.stderr
+                run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
+                try:
+                    output, errors = run_process.communicate(timeout=10)
+                except subprocess.TimeoutExpired as t_err:
+                    flash("Code Timeout during runtime", "error")
+                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             elif ';' in test_case:  # Contains multiple inputs
                 test_case = '\n'.join(test_case.split(';'))
                 print("Running program:", filepath + '.out', '<', test_case)
-                run_process = run([filepath + '.out'], capture_output=True, text=True,
-                                  input=test_case, encoding='utf-8')
-                output = run_process.stdout
-                errors = run_process.stderr
+                run_process = Popen([filepath + '.out'], text=True, encoding='utf-8')
+                try:
+                    output, errors = run_process.communicate(timeout=10, input=test_case)
+                except subprocess.TimeoutExpired as t_err:
+                    flash("Code Timeout during runtime", "error")
+                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+                # run_process = run([filepath + '.out'], capture_output=True, text=True,
+                #                   input=test_case, encoding='utf-8')
             else:   # Contains single input
                 print("Running program:", filepath + '.out', '<', test_case)
-                run_process = run([filepath + '.out'], capture_output=True, text=True,
-                                  input=test_case, encoding='utf-8')
-                output = run_process.stdout
-                errors = run_process.stderr
+                run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
+                                    encoding='utf-8')
+                try:
+                    output, errors = run_process.communicate(timeout=10, input=test_case)
+                except subprocess.TimeoutExpired as t_err:
+                    flash("Code Timeout during runtime", "error")
+                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             desired_output = test_case_row.output
             if run_process.returncode != 0:
                 flash(f"Runtime error: {errors}", "error")
@@ -547,22 +560,33 @@ def run_code(question_id, assignment_id):
             test_case = test_case_row.case
             if '<>' in test_case:  # No input required
                 print("Running program:", filepath + '.out')
-                run_process = run([filepath + '.out'], capture_output=True, encoding='utf-8')
-                output = run_process.stdout
-                errors = run_process.stderr
+                run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
+                try:
+                    output, errors = run_process.communicate(timeout=10)
+                except subprocess.TimeoutExpired as t_err:
+                    flash("Code Timeout during runtime")
+                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             elif ';' in test_case:  # Contains multiple inputs
                 test_case = '\n'.join(test_case.split(';'))
                 print("Running program:", filepath + '.out', '<', test_case)
-                run_process = run([filepath + '.out'], capture_output=True, text=True,
-                                  input=test_case, encoding='utf-8')
-                output = run_process.stdout
-                errors = run_process.stderr
+                run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
+                                    encoding='utf-8')
+                try:
+                    output, errors = run_process.communicate(timeout=10, input=test_case)
+                except subprocess.TimeoutExpired as t_err:
+                    flash("Code Timeout during runtime")
+                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+                # run_process = run([filepath + '.out'], capture_output=True, text=True,
+                #                   input=test_case, encoding='utf-8')
             else:  # Contains single input
                 print("Running program:", filepath + '.out', '<', test_case)
-                run_process = run([filepath + '.out'], capture_output=True, text=True,
-                                  input=test_case, encoding='utf-8')
-                output = run_process.stdout
-                errors = run_process.stderr
+                run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
+                                    encoding='utf-8')
+                try:
+                    output, errors = run_process.communicate(timeout=10, input=test_case)
+                except subprocess.TimeoutExpired as t_err:
+                    flash("Code Timeout during runtime")
+                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             # output = output[1:]
             desired_output = test_case_row.output
             submission_data['case'] = test_case

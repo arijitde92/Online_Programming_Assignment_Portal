@@ -1,4 +1,3 @@
-<!-- view_assignment.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,33 +6,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
 </head>
-<body>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-            {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-            {% endfor %}
+<body class="bg-light">
+
+    <!-- Flash Messages -->
+    <div class="container mt-4">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Code Output Section -->
+    <div class="container mt-4">
+        <div class="card p-4">
+            <h1 class="text-center">Code Output</h1>
+
+            <!-- Question Display -->
+            <div class="mb-4">
+                <h2>Question:</h2>
+                <textarea class="form-control" rows="6" readonly>{{ question }}</textarea>
+            </div>
+
+            <!-- Test Case Results -->
+            <h2 class="mt-4">Test Cases:</h2>
+            <ul class="list-group">
+                {% for test_case in submissions %}
+                    <li class="list-group-item">
+                        <p><strong>Test Case:</strong> {{ test_case.case }}</p>
+                        <p><strong>Desired Output:</strong> {{ test_case.output }}</p>
+                        <p><strong>Your Output:</strong> {{ test_case.st_output }}</p>
+                        <p><strong>Status:</strong>
+                            {% if test_case.status == "Passed" %}
+                                <span class="text-success">{{ test_case.status }}</span>
+                            {% else %}
+                                <span class="text-danger">{{ test_case.status }}</span>
+                            {% endif %}
+                        </p>
+                    </li>
+                {% endfor %}
             </ul>
-        {% endif %}
-    {% endwith %}
-    <h1>Code output</h1>
-    <h2>Question:</h2><br>
-    <label for="question">
-        <textarea name="question" rows="10" cols="100">{{ question }}</textarea>
-    </label>
-    <br>
-    <h2>Input:</h2><br>
-    {% for test_case in submissions %}
-    <ol>
-        <li>Test Case:<br>{{ test_case.case }}<br>Desired output: {{ test_case.output }}<br>Your Output: {{ test_case.st_output }}<br>Status: {{ test_case.status }}</li>
-    </ol>
-    {% endfor %}
-    <br>
-    <a href="{{ url_for('student_dashboard', student_id=student_id) }}">Back to Student Dashboard</a>
-    <br>
-    <a href="{{ url_for('view_assignment_student', assignment_id=assignment_id) }}">Back to Assignments</a>
-    <br>
+        </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <div class="container my-4 d-flex justify-content-between">
+        <a href="{{ url_for('student_dashboard', student_id=student_id) }}" class="btn btn-secondary">Back to Student Dashboard</a>
+        <a href="{{ url_for('view_assignment_student', assignment_id=assignment_id) }}" class="btn btn-secondary">Back to Assignments</a>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
 </html>

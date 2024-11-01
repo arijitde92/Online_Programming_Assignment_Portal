@@ -36,7 +36,7 @@ def load_student(student_id):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', title="Online Assignment Evaluator")
 
 
 @app.route('/student_signup', methods=['GET', 'POST'])
@@ -122,9 +122,12 @@ def student_dashboard(student_id):
         # current_date = '2024-10-30'
         if group[-1] == '1':
             assignments = Assignment.query.filter(Assignment.date1 <= current_date).all()
+            student_group = 1
         else:
             assignments = Assignment.query.filter(Assignment.date2 <= current_date).all()
-        return render_template('student_dashboard.html', assignments=assignments, student_data=student_data)
+            student_group = 2
+        return render_template('student_dashboard.html',
+                               assignments=assignments, student_data=student_data, student_group=student_group)
 
 @app.route('/teacher_dashboard')
 def teacher_dashboard():

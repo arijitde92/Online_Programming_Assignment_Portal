@@ -1,3 +1,4 @@
+gunicorn
 Flask
 Flask_Bcrypt
 Flask_Login

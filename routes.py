@@ -49,6 +49,7 @@ def student_signup():
             roll=form.roll.data,
             exam_roll=form.exam_roll.data,
             email_id=form.email_id.data,
+            group=form.group.data,
             password=hashed_password
         )
         db.session.add(student)
@@ -530,12 +531,12 @@ def upload_submission(question_id, assignment_id):
 def run_code(question_id, assignment_id):
     current_student_id = session['student_id']
     if 'file' not in request.files:
-        flash('No file part')
+        flash('No file part', 'error')
         return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
 
     file = request.files['file']
     if file.filename == '':
-        flash('No selected file')
+        flash('No selected file', 'error')
         return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
 
     if file and allowed_file(file.filename):
@@ -567,7 +568,7 @@ def run_code(question_id, assignment_id):
                 try:
                     output, errors = run_process.communicate(timeout=10)
                 except subprocess.TimeoutExpired as t_err:
-                    flash("Code Timeout during runtime")
+                    flash("Code Timeout during runtime", 'error')
                     return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             elif ';' in test_case:  # Contains multiple inputs
                 test_case = '\n'.join(test_case.split(';'))
@@ -577,7 +578,7 @@ def run_code(question_id, assignment_id):
                 try:
                     output, errors = run_process.communicate(timeout=10, input=test_case)
                 except subprocess.TimeoutExpired as t_err:
-                    flash("Code Timeout during runtime")
+                    flash("Code Timeout during runtime", "error")
                     return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
                 # run_process = run([filepath + '.out'], capture_output=True, text=True,
                 #                   input=test_case, encoding='utf-8')
@@ -588,7 +589,7 @@ def run_code(question_id, assignment_id):
                 try:
                     output, errors = run_process.communicate(timeout=10, input=test_case)
                 except subprocess.TimeoutExpired as t_err:
-                    flash("Code Timeout during runtime")
+                    flash("Code Timeout during runtime", "error")
                     return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             # output = output[1:]
             desired_output = test_case_row.output

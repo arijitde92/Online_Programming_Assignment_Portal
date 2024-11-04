@@ -10,3 +10,5 @@ WTForms
 flask-bcrypt
 flask-login
 SQLAlchemy
+MySQL-python
+mysql-connector-python

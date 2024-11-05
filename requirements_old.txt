@@ -1,0 +1,14 @@
+gunicorn
+Flask
+Flask_Bcrypt
+Flask_Login
+flask_sqlalchemy
+flask_wtf
+python-dotenv
+Werkzeug
+WTForms
+flask-bcrypt
+flask-login
+SQLAlchemy
+PyMySQL
+mysql-connector-python

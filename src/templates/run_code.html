@@ -42,7 +42,7 @@
                         <p><strong>Desired Output:</strong> {{ test_case.output }}</p>
                         <p><strong>Your Output:</strong> {{ test_case.st_output }}</p>
                         <p><strong>Status:</strong>
-                            {% if test_case.status == "Passed" %}
+                            {% if test_case.status == "Correct" %}
                                 <span class="text-success">{{ test_case.status }}</span>
                             {% else %}
                                 <span class="text-danger">{{ test_case.status }}</span>

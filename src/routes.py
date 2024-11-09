@@ -22,6 +22,7 @@ UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'c'}
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)

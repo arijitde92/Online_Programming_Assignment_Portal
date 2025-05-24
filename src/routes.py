@@ -15,6 +15,7 @@ from datetime import datetime
 from io import StringIO
 import os
 import csv
+from llm import get_code_feedback, get_compilation_feedback, get_test_case_feedback, get_runtime_feedback
 
 
 # Configuration for file upload
@@ -440,12 +441,25 @@ def upload_submission(question_id, assignment_id):
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
+        # Get AI feedback on code quality
+        code_analysis = get_code_feedback(filepath)
+        if code_analysis["status"] == "success":
+            code_feedback = code_analysis["feedback"]
+        else:
+            code_feedback = "Unable to analyze code quality."
+
         # Run the .c file evaluation (this is an example, adjust it to your system)
         compile_process = Popen(['gcc', filepath, '-o', filepath + '.out'], stdout=PIPE, stderr=PIPE)
         compile_output, compile_errors = compile_process.communicate()
 
         if compile_process.returncode != 0:
-            flash(f"Compilation error: {compile_errors.decode('utf-8')}", "error")
+            # Get AI feedback on compilation errors
+            error_analysis = get_compilation_feedback(compile_errors.decode('utf-8'))
+            if error_analysis["status"] == "success":
+                compilation_feedback = error_analysis["feedback"]
+            else:
+                compilation_feedback = "Unable to analyze compilation errors."
+            flash(f"Compilation error: {compile_errors.decode('utf-8')}\n\nFeedback: {compilation_feedback}", "error")
             return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
         else:
             print("Compile output:", compile_output)
@@ -454,9 +468,11 @@ def upload_submission(question_id, assignment_id):
         test_cases = Testcase.query.filter_by(ques_id=question_id).all()
         question_data = Question.query.filter_by(id=question_id).first()
         test_cases_passed = 0
+        output = None
         for idx, test_case_row in enumerate(test_cases):
             print(f"TEST CASE {idx+1}:")
             test_case = test_case_row.case
+            test_case_feedback = ""
             if '<>' in test_case:   # No input required
                 print("Running program:", filepath + '.out')
                 run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
@@ -487,36 +503,54 @@ def upload_submission(question_id, assignment_id):
                     return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             desired_output = test_case_row.output
             if run_process.returncode != 0:
-                flash(f"Runtime error: {errors}", "error")
+                # Get AI feedback on runtime errors
+                error_analysis = get_runtime_feedback(errors, test_case)
+                if error_analysis["status"] == "success":
+                    runtime_err_feedback = error_analysis["feedback"]
+                else:
+                    runtime_err_feedback = "Unable to analyze runtime errors."
+                flash(f"Runtime error: {errors}\n\nFeedback: {runtime_err_feedback}", "error")
                 return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             else:   # Code ran without runtime errors
                 # output = output.decode('utf-8')
                 if desired_output == '<>':  # Any output is acceptable
                     marks = float(question_data.marks)/len(test_cases)
-                    # test_cases_passed = -1
+                    test_cases_passed += 1
                 elif ';' in desired_output: # Contains multiple outputs
                     desired_output = '\n'.join(desired_output.split(';'))
                     if output == desired_output:
-                        # test_cases_passed += 1
+                        test_cases_passed += 1
                         marks = float(question_data.marks)/len(test_cases)
                     else:
                         print(f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                        # Get AI feedback on test case mismatch
+                        mismatch_analysis = get_test_case_feedback(test_case, output, desired_output)
+                        if mismatch_analysis["status"] == "success":
+                            test_case_feedback += mismatch_analysis["feedback"]
+                        else:
+                            test_case_feedback += "Unable to analyze test case mismatch."
                         marks = 0.0
                 else:   # Contains single output
                     if output == desired_output:
-                        # test_cases_passed += 1
+                        test_cases_passed += 1
                         marks = float(question_data.marks)/len(test_cases)
                     else:
                         print(
                             f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                        # Get AI feedback on test case mismatch
+                        mismatch_analysis = get_test_case_feedback(test_case, output, desired_output)
+                        if mismatch_analysis["status"] == "success":
+                            test_case_feedback += mismatch_analysis["feedback"]
+                        else:
+                            test_case_feedback += "Unable to analyze test case mismatch."
                         marks = 0.0
                 test_case_id = test_case_row.id
-                feedback = "Dummy Feedback"
                 # Save the marks to the database
                 current_date = datetime.today()
+                final_feedback = "Code Feedback:\n" + code_feedback + "\n\nTest Case Feedback:\n" + test_case_feedback
                 submission = Submission(st_id=current_student_id, date=current_date,
                                         ass_id=assignment_id, ques_id=question_id, marks=marks,
-                                        test_case_id=test_case_id, output=output, feedback=feedback)
+                                        test_case_id=test_case_id, output=output, feedback=final_feedback)
                 db.session.add(submission)
                 db.session.commit()
 
@@ -545,16 +579,29 @@ def run_code(question_id, assignment_id):
         filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(filepath)
 
+        # Get AI feedback on code quality
+        code_analysis = get_code_feedback(filepath, debug=True)
+        if code_analysis["status"] == "success":
+            code_feedback = code_analysis["feedback"]
+        else:
+            code_feedback = "Unable to analyze code quality."
+
         # Run the .c file evaluation (this is an example, adjust it to your system)
         compile_process = Popen(['gcc', filepath, '-o', filepath + '.out'], stdout=PIPE, stderr=PIPE)
         compile_output, compile_errors = compile_process.communicate()
 
         if compile_process.returncode != 0:
-            flash(f"Compilation error: {compile_errors.decode('utf-8')}", "error")
+            # Get AI feedback on compilation errors
+            error_analysis = get_compilation_feedback(compile_errors.decode('utf-8'))
+            if error_analysis["status"] == "success":
+                compilation_feedback = error_analysis["feedback"]
+            else:
+                compilation_feedback = "Unable to analyze compilation errors."
+            flash(f"Compilation error: {compile_errors.decode('utf-8')}\n\nFeedback: {compilation_feedback}", "error")
             return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
         else:
             print("Compile output:", compile_output)
-
+        
         # Now, run the compiled program with test cases
         test_cases = Testcase.query.filter_by(ques_id=question_id).all()
         question_data = Question.query.filter_by(id=question_id).first()
@@ -563,6 +610,7 @@ def run_code(question_id, assignment_id):
             submission_data = dict()
             print(f"TEST CASE {idx + 1}:")
             test_case = test_case_row.case
+            test_case_feedback = ""
             if '<>' in test_case:  # No input required
                 print("Running program:", filepath + '.out')
                 run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, encoding='utf-8')
@@ -598,7 +646,13 @@ def run_code(question_id, assignment_id):
             submission_data['output'] = desired_output
             submission_data['st_output'] = output
             if run_process.returncode != 0:
-                flash(f"Runtime error: {errors}", "error")
+                # Get AI feedback on runtime errors
+                error_analysis = get_runtime_feedback(errors, test_case)
+                if error_analysis["status"] == "success":
+                    runtime_err_feedback = error_analysis["feedback"]
+                else:
+                    runtime_err_feedback = "Unable to analyze runtime errors."
+                flash(f"Runtime error: {errors}\n\nFeedback: {runtime_err_feedback}", "error")
                 return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
             else:  # Code ran without runtime errors
                 output = output
@@ -612,6 +666,12 @@ def run_code(question_id, assignment_id):
                     else:
                         print(
                             f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                        # Get AI feedback on test case mismatch
+                        mismatch_analysis = get_test_case_feedback(test_case, output, desired_output)
+                        if mismatch_analysis["status"] == "success":
+                            test_case_feedback = mismatch_analysis["feedback"]
+                        else:
+                            test_case_feedback = "Unable to analyze test case mismatch."
                         submission_data['status'] = "Incorrect"
                 else:  # Contains single output
                     try:
@@ -622,6 +682,12 @@ def run_code(question_id, assignment_id):
                         else:
                             print(
                                 f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                            # Get AI feedback on test case mismatch
+                            mismatch_analysis = get_test_case_feedback(test_case, output, desired_output)
+                            if mismatch_analysis["status"] == "success":
+                                test_case_feedback = mismatch_analysis["feedback"]
+                            else:
+                                test_case_feedback = "Unable to analyze test case mismatch."
                             submission_data['status'] = "Incorrect"
                     except Exception as err:
                         if output == desired_output:
@@ -629,15 +695,20 @@ def run_code(question_id, assignment_id):
                         else:
                             print(
                                 f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
+                            # Get AI feedback on test case mismatch
+                            mismatch_analysis = get_test_case_feedback(test_case, output, desired_output)
+                            if mismatch_analysis["status"] == "success":
+                                test_case_feedback = mismatch_analysis["feedback"]
+                            else:
+                                test_case_feedback = "Unable to analyze test case mismatch."
                             submission_data['status'] = "Incorrect"
-                feedback = "Dummy Feedback"
-                submission_data['feedback'] = feedback
+                submission_data['feedback'] = "Code feedback: <br>"+code_feedback + "\n<br>Test Case feedback: <br>" + test_case_feedback
                 submissions.append(submission_data)
 
         return render_template('run_code.html',
                                assignment_id=assignment_id,
                                student_id=current_student_id,
-                               question=question_data.question,
+                               question=question_data.question, # type: ignore
                                submissions=submissions
                                )
 

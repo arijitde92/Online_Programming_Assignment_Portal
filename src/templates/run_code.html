@@ -48,7 +48,8 @@
                                 <span class="text-danger">{{ test_case.status }}</span>
                             {% endif %}
                         </p>
-                        <p><strong>Feedback:</strong> {{ test_case.feedback }}</p>
+                        <p><strong>Feedback:</strong></p>
+                        <pre>{{ test_case.feedback }}</pre>
                     </li>
                 {% endfor %}
             </ul>

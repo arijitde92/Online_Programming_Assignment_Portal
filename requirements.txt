@@ -74,3 +74,5 @@ webencodings==0.5.1
 Werkzeug==3.0.3
 WTForms==3.1.2
 yarg==0.1.9
+email-validator
+psycopg2-binary

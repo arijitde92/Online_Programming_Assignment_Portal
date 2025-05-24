@@ -368,7 +368,7 @@ def view_assignment_student(assignment_id):
                                                     test_case_id=testcase.id).order_by(Submission.id.desc()).first()
             if submission:
                 total_maks_gained += submission.marks
-                testcase_submissions[testcase.id] = (submission.output, submission.marks)
+                testcase_submissions[testcase.id] = (submission.output, submission.marks, submission.feedback)
             else:
                 testcase_submissions[testcase.id] = None  # No submission found for this test case
 
@@ -377,7 +377,7 @@ def view_assignment_student(assignment_id):
             'testcases': testcases,
             'testcase_submissions': testcase_submissions  # Storing test case outputs
         })
-
+    print(question_details)
     return render_template('view_assignment_student.html',
                            assignment=assignment,
                            question_details=question_details,
@@ -511,12 +511,12 @@ def upload_submission(question_id, assignment_id):
                             f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
                         marks = 0.0
                 test_case_id = test_case_row.id
-
+                feedback = "Dummy Feedback"
                 # Save the marks to the database
                 current_date = datetime.today()
                 submission = Submission(st_id=current_student_id, date=current_date,
                                         ass_id=assignment_id, ques_id=question_id, marks=marks,
-                                        test_case_id=test_case_id, output=output)
+                                        test_case_id=test_case_id, output=output, feedback=feedback)
                 db.session.add(submission)
                 db.session.commit()
 
@@ -630,6 +630,8 @@ def run_code(question_id, assignment_id):
                             print(
                                 f"Code Output - Desired Output Mismatch\nCode output:\t{output}\nDesired output:\t{desired_output}")
                             submission_data['status'] = "Incorrect"
+                feedback = "Dummy Feedback"
+                submission_data['feedback'] = feedback
                 submissions.append(submission_data)
 
         return render_template('run_code.html',

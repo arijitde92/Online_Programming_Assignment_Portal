@@ -1,61 +1,36 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Student Dashboard</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-</head>
-<body class="bg-light">
+{% extends "base.html" %}
 
-    <!-- Flash Messages -->
-    <div class="container mt-4">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="alert alert-dismissible fade show" role="alert">
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+{% block title %}Student Dashboard{% endblock %}
+
+{% block content %}
+<div class="container text-center my-5">
+    <h1 class="display-4">Student Dashboard</h1>
+    <p class="lead">Welcome, {{ student_data.name }}!</p>
+    <p>Not {{ student_data.name }}? <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></p>
+</div>
+
+<!-- Assignments Section -->
+<div class="container">
+    <h2>Your Assignments</h2>
+    {% if assignments %}
+        <div class="row">
+            {% for assignment in assignments %}
+                <div class="col-md-6 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ assignment.topic }}</h5>
+                            <p class="card-text">
+                                Total Marks: {{ assignment.total_marks }}<br>
+                                Number of Questions: {{ assignment.num_questions }}
+                            </p>
+                            <a href="{{ url_for('view_assignment_student', assignment_id=assignment.id) }}" class="btn btn-primary">View Assignment</a>
                         </div>
-                    {% endfor %}
+                    </div>
                 </div>
-            {% endif %}
-        {% endwith %}
-    </div>
-
-    <!-- Dashboard Heading -->
-    <div class="container text-center my-5">
-        <h1 class="display-4">Student Dashboard</h1>
-        <p class="lead">Welcome, {{ student_data.name }}!</p>
-        <p>Not {{ student_data.name }}? <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a></p>
-    </div>
-
-    <!-- Assignments Section -->
-    <div class="container">
-        <h3 class="mb-4">Assignments</h3>
-        {% if assignments|length >= 1 %}
-            <div class="list-group">
-                {% for assignment in assignments %}
-                    <a href="{{ url_for('view_assignment_student', assignment_id=assignment.id) }}" class="list-group-item list-group-item-action">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h5 class="mb-1">{{ assignment.topic }}</h5>
-                            {% if student_group==1 %}
-                                Due Date: {{ assignment.due_date1 }}
-                            {% else %}
-                                Due Date: {{ assignment.due_date2 }}
-                            {% endif %}
-                        </div>
-                        <p class="mb-1">View questions for this assignment.</p>
-                    </a>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="alert alert-info" role="alert">
-                You currently have no upcoming assignments.
-            </div>
-        {% endif %}
-    </div>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-</body>
-</html>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p>No assignments available at the moment.</p>
+    {% endif %}
+</div>
+{% endblock %}

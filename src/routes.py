@@ -27,14 +27,25 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 # Initialize Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'index'  # Redirect to 'login' view if not authenticated
+login_manager.login_view = 'index'  # Redirect to index page if not authenticated
+login_manager.login_message = 'Please log in to access this page.'
+login_manager.login_message_category = 'info'
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @login_manager.user_loader
-def load_student(student_id):
-    return Student.query.get(int(student_id))
+def load_user(user_id):
+    # The user_id will be in the format "type:id" (e.g., "teacher:1" or "student:1")
+    try:
+        user_type, id = user_id.split(':')
+        if user_type == 'teacher':
+            return Teacher.query.get_or_404(int(id))
+        elif user_type == 'student':
+            return Student.query.get_or_404(int(id))
+    except (ValueError, AttributeError):
+        return None
+    return None
 
 @app.route('/')
 def index():
@@ -67,11 +78,11 @@ def student_login():
     if form.validate_on_submit():
         student = Student.query.filter_by(email_id=form.email_id.data).first()
         if student and bcrypt.check_password_hash(student.password, form.password.data):
-            login_user(student)
-            # Store the student's ID in the session
-            session['student_id'] = student.id
+            # Create a unique identifier combining type and id
+            user_id = f"student:{student.id}"
+            login_user(student, remember=True)
             flash('Login successful!', 'success')
-            return redirect(url_for('student_dashboard', student_id=student.id))  # Redirect to student dashboard after login
+            return redirect(url_for('student_dashboard', student_id=student.id))
         else:
             flash('Login unsuccessful. Please check email and password.', 'danger')
     return render_template('student_login.html', form=form)
@@ -83,71 +94,70 @@ def teacher_login():
     if form.validate_on_submit():
         teacher = Teacher.query.filter_by(email=form.email.data).first()
         if teacher and bcrypt.check_password_hash(teacher.password, form.password.data):
+            # Create a unique identifier combining type and id
+            user_id = f"teacher:{teacher.id}"
+            login_user(teacher, remember=True)
             flash('Login successful!', 'success')
-            session['teacher_id'] = teacher.id
-            return redirect(url_for('teacher_dashboard'))  # Redirect to teacher dashboard after login
+            return redirect(url_for('teacher_dashboard'))
         else:
             flash('Login unsuccessful. Please check email and password.', 'danger')
     return render_template('teacher_login.html', form=form)
 
 @app.route('/logout')
-@login_required
 def logout():
-    # Check if a student is logged in
-    # if 'student_id' in session:
-    #     session.pop('student_id', None)  # Remove the student_id from session
-    #     flash('You have been logged out as a student.', 'success')
-    #
-    # # Check if a teacher is logged in
-    # elif 'teacher_id' in session:
-    #     session.pop('teacher_id', None)  # Remove the teacher_id from session
-    #     flash('You have been logged out as a teacher.', 'success')
-    # else:
-    #     flash('No user is currently logged in.', 'warning')
+    # Clear session data
+    session.clear()
+    # Use Flask-Login's logout_user
     logout_user()
     flash('You have been logged out.', 'success')
-    # Redirect to login page after logout
     return redirect(url_for('index'))
 
 @app.route('/student_dashboard/<int:student_id>')
 @login_required
 def student_dashboard(student_id):
-    if 'student_id' not in session:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('student_login'))
-    elif session['student_id'] != student_id:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('student_login'))
+    if not isinstance(current_user, Student):
+        flash('Access denied. Students only.', 'danger')
+        return redirect(url_for('index'))
+    
+    if current_user.id != student_id:
+        flash('Access denied. You can only view your own dashboard.', 'danger')
+        return redirect(url_for('index'))
+    
+    student_data = current_user
+    group = student_data.group
+    current_date = datetime.today().strftime('%Y-%m-%d')
+    
+    if group[-1] == '1':
+        assignments = Assignment.query.filter(Assignment.date1 <= current_date).all()
+        student_group = 1
     else:
-        student_data = Student.query.filter_by(id=student_id).first()
-        group = student_data.group
-        current_date = datetime.today().strftime('%Y-%m-%d')
-        # current_date = '2024-10-30'
-        if group[-1] == '1':
-            assignments = Assignment.query.filter(Assignment.date1 <= current_date).all()
-            student_group = 1
-        else:
-            assignments = Assignment.query.filter(Assignment.date2 <= current_date).all()
-            student_group = 2
-        return render_template('student_dashboard.html',
-                               assignments=assignments, student_data=student_data, student_group=student_group)
+        assignments = Assignment.query.filter(Assignment.date2 <= current_date).all()
+        student_group = 2
+    
+    return render_template('student_dashboard.html',
+                         assignments=assignments,
+                         student_data=student_data,
+                         student_group=student_group)
 
 @app.route('/teacher_dashboard')
-def teacher_dashboard():
-    if 'teacher_id' not in session:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('teacher_login'))
-    # Fetch relevant data (e.g., assignments) if needed
-    assignments = Assignment.query.all()  # Or filter based on teacher if needed
+@login_required
+def teacher_dashboard():   
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
+    assignments = Assignment.query.all()
     return render_template('teacher_dashboard.html', assignments=assignments)
 
 
 @app.route('/create_assignment', methods=['GET', 'POST'])
+@login_required
 def create_assignment():
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     if request.method == 'POST':
-        if 'teacher_id' not in session:
-            flash('You must be logged in to submit your work.')
-            return redirect(url_for('teacher_login'))
         topic = request.form['topic']
         date1 = request.form['date1']
         date2 = request.form['date2']
@@ -156,7 +166,6 @@ def create_assignment():
         total_marks = request.form['total_marks']
         num_questions = request.form['num_questions']
 
-        # Create an Assignment object
         new_assignment = Assignment(
             topic=topic,
             date1=date1,
@@ -171,22 +180,27 @@ def create_assignment():
         db.session.commit()
 
         flash('Assignment created successfully!', 'success')
-        # Redirect to the add questions page with the new assignment ID
         return redirect(url_for('add_questions', assignment_id=new_assignment.id))
 
     return render_template('create_assignment.html')
 
 @app.route('/view_assignments', methods=['GET'])
+@login_required
 def view_assignments():
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
     assignments = Assignment.query.all()
     return render_template('view_assignments.html', assignments=assignments)
 
 
 @app.route('/add_questions/<int:assignment_id>', methods=['GET', 'POST'])
+@login_required
 def add_questions(assignment_id):
-    if 'teacher_id' not in session:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('teacher_login'))
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     assignment = Assignment.query.get_or_404(assignment_id)
     questions = Question.query.filter_by(ass_id=assignment_id).all()
     # Calculate the number of questions and total marks
@@ -226,11 +240,13 @@ def add_questions(assignment_id):
     return render_template('add_questions.html', assignment=assignment, questions=questions)
 
 @app.route('/add_test_cases/<int:question_id>', methods=['GET', 'POST'])
+@login_required
 def add_test_cases(question_id):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     if request.method == 'POST':
-        if 'teacher_id' not in session:
-            flash('You must be logged in to submit your work.')
-            return redirect(url_for('teacher_login'))
         case_input = request.form['case']
         output = request.form['output']
 
@@ -254,9 +270,9 @@ def add_test_cases(question_id):
 
 @app.route('/delete_testcase/<int:testcase_id>', methods=['POST'])
 def delete_testcase(testcase_id):
-    if 'teacher_id' not in session:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('teacher_login'))
+    # if 'teacher_id' not in session:
+    #     flash('You must be logged in to submit your work.')
+    #     return redirect(url_for('teacher_login'))
     testcase = Testcase.query.get_or_404(testcase_id)
 
     db.session.delete(testcase)
@@ -267,13 +283,15 @@ def delete_testcase(testcase_id):
 
 
 @app.route('/edit_question/<int:question_id>', methods=['GET', 'POST'])
+@login_required
 def edit_question(question_id):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     question = Question.query.get_or_404(question_id)
 
     if request.method == 'POST':
-        if 'teacher_id' not in session:
-            flash('You must be logged in to submit your work.')
-            return redirect(url_for('teacher_login'))
         # Update question details
         question.question = request.form['question']
         question.marks = request.form['marks']
@@ -304,13 +322,15 @@ def edit_question(question_id):
 
 
 @app.route('/edit_testcase/<int:testcase_id>', methods=['GET', 'POST'])
+@login_required
 def edit_testcase(testcase_id):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     testcase = Testcase.query.get_or_404(testcase_id)
 
     if request.method == 'POST':
-        if 'teacher_id' not in session:
-            flash('You must be logged in to submit your work.')
-            return redirect(url_for('teacher_login'))
         testcase.case = request.form['case']
         testcase.output = request.form['output']
 
@@ -322,7 +342,12 @@ def edit_testcase(testcase_id):
 
 
 @app.route('/view_assignment/<int:assignment_id>', methods=['GET'])
+@login_required
 def view_assignment(assignment_id):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     assignment = Assignment.query.get_or_404(assignment_id)
     questions = Question.query.filter_by(ass_id=assignment_id).all()
 
@@ -345,14 +370,14 @@ def view_assignment(assignment_id):
 @app.route('/view_assignment_student/<int:assignment_id>', methods=['GET'])
 @login_required
 def view_assignment_student(assignment_id):
-    if 'student_id' not in session:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('student_login'))
-
-    current_student_id = session['student_id']
+    if not isinstance(current_user, Student):
+        flash('Access denied. Students only.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_student_id = current_user.id
     assignment = Assignment.query.get_or_404(assignment_id)
     questions = Question.query.filter_by(ass_id=assignment_id).all()
-    student_data = Student.query.get_or_404(current_student_id)
+    student_data = current_user
     student_group = student_data.group
     current_date = datetime.today().date()
     if student_group == 'A1':
@@ -387,7 +412,12 @@ def view_assignment_student(assignment_id):
                            due_date_passed=is_due_date_passed)
 
 @app.route('/delete_assignment/<int:assignment_id>', methods=['POST'])
+@login_required
 def delete_assignment(assignment_id):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     assignment = Assignment.query.get_or_404(assignment_id)
 
     # Delete the assignment and its associated questions and test cases
@@ -398,7 +428,12 @@ def delete_assignment(assignment_id):
     return redirect(url_for('view_assignments'))
 
 @app.route('/edit_assignment/<int:assignment_id>', methods=['GET', 'POST'])
+@login_required
 def edit_assignment(assignment_id):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     assignment = Assignment.query.get_or_404(assignment_id)
 
     if request.method == 'POST':
@@ -422,11 +457,11 @@ def edit_assignment(assignment_id):
 @app.route('/upload_submission/<int:question_id>/<int:assignment_id>', methods=['POST'])
 @login_required
 def upload_submission(question_id, assignment_id):
-    if 'student_id' not in session:
-        flash('You must be logged in to submit your work.')
-        return redirect(url_for('login'))
-
-    current_student_id = session['student_id']
+    if not isinstance(current_user, Student):
+        flash('Access denied. Students only.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_student_id = current_user.id
     if 'file' not in request.files:
         flash('No file part')
         return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
@@ -564,7 +599,11 @@ def upload_submission(question_id, assignment_id):
 @app.route('/run_code/<int:question_id>/<int:assignment_id>', methods=['POST'])
 @login_required
 def run_code(question_id, assignment_id):
-    current_student_id = session['student_id']
+    if not isinstance(current_user, Student):
+        flash('Access denied. Students only.', 'danger')
+        return redirect(url_for('index'))
+    
+    current_student_id = current_user.id
     if 'file' not in request.files:
         flash('No file part', 'error')
         return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
@@ -580,13 +619,13 @@ def run_code(question_id, assignment_id):
         file.save(filepath)
 
         # Get AI feedback on code quality
-        code_analysis = get_code_feedback(filepath, debug=True)
+        code_analysis = get_code_feedback(filepath)
         if code_analysis["status"] == "success":
             code_feedback = code_analysis["feedback"]
         else:
             code_feedback = "Unable to analyze code quality."
 
-        # Run the .c file evaluation (this is an example, adjust it to your system)
+        # Run the .c file evaluation
         compile_process = Popen(['gcc', filepath, '-o', filepath + '.out'], stdout=PIPE, stderr=PIPE)
         compile_output, compile_errors = compile_process.communicate()
 
@@ -597,10 +636,15 @@ def run_code(question_id, assignment_id):
                 compilation_feedback = error_analysis["feedback"]
             else:
                 compilation_feedback = "Unable to analyze compilation errors."
-            flash(f"Compilation error: {compile_errors.decode('utf-8')}\n\nFeedback: {compilation_feedback}", "error")
-            return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
-        else:
-            print("Compile output:", compile_output)
+            
+            return render_template('run_code.html',
+                               assignment_id=assignment_id,
+                               student_id=current_student_id,
+                               question=Question.query.get(question_id).question,
+                               submissions=[],
+                               error_type="compilation",
+                               error_message=compile_errors.decode('utf-8'),
+                               error_feedback=compilation_feedback)
         
         # Now, run the compiled program with test cases
         test_cases = Testcase.query.filter_by(ques_id=question_id).all()
@@ -617,8 +661,14 @@ def run_code(question_id, assignment_id):
                 try:
                     output, errors = run_process.communicate(timeout=10)
                 except subprocess.TimeoutExpired as t_err:
-                    flash("Code Timeout during runtime", 'error')
-                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+                    return render_template('run_code.html',
+                                       assignment_id=assignment_id,
+                                       student_id=current_student_id,
+                                       question=question_data.question,
+                                       submissions=[],
+                                       error_type="timeout",
+                                       error_message="Code execution timed out after 10 seconds",
+                                       error_feedback="Your code took too long to execute. Please check for infinite loops or inefficient algorithms.")
             elif ';' in test_case:  # Contains multiple inputs
                 test_case = '\n'.join(test_case.split(';'))
                 print("Running program:", filepath + '.out', '<', test_case)
@@ -627,10 +677,14 @@ def run_code(question_id, assignment_id):
                 try:
                     output, errors = run_process.communicate(timeout=10, input=test_case)
                 except subprocess.TimeoutExpired as t_err:
-                    flash("Code Timeout during runtime", "error")
-                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
-                # run_process = run([filepath + '.out'], capture_output=True, text=True,
-                #                   input=test_case, encoding='utf-8')
+                    return render_template('run_code.html',
+                                       assignment_id=assignment_id,
+                                       student_id=current_student_id,
+                                       question=question_data.question,
+                                       submissions=[],
+                                       error_type="timeout",
+                                       error_message="Code execution timed out after 10 seconds",
+                                       error_feedback="Your code took too long to execute. Please check for infinite loops or inefficient algorithms.")
             else:  # Contains single input
                 print("Running program:", filepath + '.out', '<', test_case)
                 run_process = Popen([filepath + '.out'], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True,
@@ -638,22 +692,37 @@ def run_code(question_id, assignment_id):
                 try:
                     output, errors = run_process.communicate(timeout=10, input=test_case)
                 except subprocess.TimeoutExpired as t_err:
-                    flash("Code Timeout during runtime", "error")
-                    return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
-            # output = output[1:]
+                    return render_template('run_code.html',
+                                       assignment_id=assignment_id,
+                                       student_id=current_student_id,
+                                       question=question_data.question,
+                                       submissions=[],
+                                       error_type="timeout",
+                                       error_message="Code execution timed out after 10 seconds",
+                                       error_feedback="Your code took too long to execute. Please check for infinite loops or inefficient algorithms.")
+            
             desired_output = test_case_row.output
             submission_data['case'] = test_case
             submission_data['output'] = desired_output
             submission_data['st_output'] = output
             if run_process.returncode != 0:
                 # Get AI feedback on runtime errors
+                print("Runtime errors:", errors)
+                print("Runtime output:", output)
                 error_analysis = get_runtime_feedback(errors, test_case)
                 if error_analysis["status"] == "success":
                     runtime_err_feedback = error_analysis["feedback"]
                 else:
                     runtime_err_feedback = "Unable to analyze runtime errors."
-                flash(f"Runtime error: {errors}\n\nFeedback: {runtime_err_feedback}", "error")
-                return redirect(url_for('view_assignment_student', assignment_id=assignment_id))
+                
+                return render_template('run_code.html',
+                                   assignment_id=assignment_id,
+                                   student_id=current_student_id,
+                                   question=question_data.question,
+                                   submissions=[],
+                                   error_type="runtime",
+                                   error_message=errors,
+                                   error_feedback=runtime_err_feedback)
             else:  # Code ran without runtime errors
                 output = output
                 print("Run output:", output)
@@ -706,15 +775,19 @@ def run_code(question_id, assignment_id):
                 submissions.append(submission_data)
 
         return render_template('run_code.html',
-                               assignment_id=assignment_id,
-                               student_id=current_student_id,
-                               question=question_data.question, # type: ignore
-                               submissions=submissions
-                               )
+                           assignment_id=assignment_id,
+                           student_id=current_student_id,
+                           question=question_data.question,
+                           submissions=submissions)
 
 
 @app.route('/view_all_student_marks', methods=['GET'])
+@login_required
 def view_all_student_marks():
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     students = Student.query.all()
     assignments = Assignment.query.all()
 
@@ -756,7 +829,12 @@ def view_all_student_marks():
 
 
 @app.route('/download_group_csv/<int:group>')
+@login_required
 def download_group_csv(group):
+    if not isinstance(current_user, Teacher):
+        flash('Access denied. Teachers only.', 'danger')
+        return redirect(url_for('index'))
+    
     # Determine the student group and due date based on the group parameter
     group_name = 'A1' if group == 1 else 'A2'
     date_field = 'date1' if group == 1 else 'date2'

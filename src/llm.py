@@ -1,9 +1,7 @@
 from langchain_anthropic import ChatAnthropic
-
+import textwrap
 from langchain_core.prompts import ChatPromptTemplate
-import os
 from dotenv import load_dotenv
-import re
 
 # Load environment variables
 load_dotenv()
@@ -18,6 +16,7 @@ def format_response(text):
     Returns:
         str: Formatted text wrapped in HTML pre tag
     """
+    
     # Split into lines and remove empty lines at start/end
     lines = text.strip().split('\n')
     
@@ -28,17 +27,19 @@ def format_response(text):
             indent = len(line) - len(line.lstrip())
             min_indent = min(min_indent, indent)
     
-    # Apply consistent indentation
+    # Apply consistent indentation and wrap text
     formatted_lines = []
     for line in lines:
         if line.strip():
             # Remove common leading whitespace and add 2 spaces indentation
-            formatted_line = '  ' + line[min_indent:].rstrip()
-            formatted_lines.append(formatted_line)
+            base_line = '  ' + line[min_indent:].rstrip()
+            # Wrap text at 120 characters
+            wrapped_lines = textwrap.wrap(base_line, width=120)
+            formatted_lines.extend(wrapped_lines)
         else:
             formatted_lines.append('')
     
-    # Join lines and wrap in pre tag
+    # Join lines
     formatted_text = '\n'.join(formatted_lines)
     return f'{formatted_text}'
 
@@ -128,7 +129,7 @@ class CodeAnalyzer:
                 3. Suggesting general approaches to fix similar errors
                 4. Mentioning relevant C programming concepts to review
                 5. Relating the error to the code structure and patterns identified in the analysis
-
+                Provide the feedback within 100 words.
                 Remember: Provide only hints and guidance, not complete solutions.
                 Provide only the feedback and nothing else."""),
                 ("human", """Previous code analysis:
@@ -199,7 +200,7 @@ class CodeAnalyzer:
                 4. Providing hints about debugging strategies
                 5. Mentioning relevant C programming concepts to review
                 6. Relating the error to the code structure and patterns identified in the analysis
-
+                Provide the feedback withing 100 words.
                 Remember: Provide only hints and guidance, not complete solutions."""),
                 ("human", """Previous code analysis:
                 {code_analysis}
@@ -270,7 +271,7 @@ class CodeAnalyzer:
                 3. Providing hints about potential logical issues
                 4. Mentioning relevant programming concepts to review
                 5. Relating the output mismatch to the code structure and patterns identified in the analysis
-
+                Provide the feedback within 100 words.
                 Remember: Provide only hints and guidance, not complete solutions.
                 Provide only the feedback and nothing else."""),
                 ("human", """Previous code analysis:

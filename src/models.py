@@ -16,15 +16,21 @@ class Student(UserMixin, db.Model):
     viva_marks = db.Column(db.Numeric(5, 2))
     report_marks = db.Column(db.Numeric(5, 2))
 
+    def get_id(self):
+        return f"student:{self.id}"
+
     def __repr__(self):
         return f"<Student {self.name}>"
 
-class Teacher(db.Model):
+class Teacher(UserMixin, db.Model):
     __tablename__ = 'teacher'  # Changed to lowercase for PostgreSQL convention
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(100), nullable=False)
+
+    def get_id(self):
+        return f"teacher:{self.id}"
 
     def __repr__(self):
         return f"<Teacher {self.name}>"

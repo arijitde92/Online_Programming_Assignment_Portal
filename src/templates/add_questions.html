@@ -1,50 +1,65 @@
 <!-- add_questions.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Add Questions</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-</head>
-<body>
-    <h1>Add Questions for Assignment: {{ assignment.topic }}</h1>
+{% extends "base.html" %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <ul class="flashes">
-            {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-            {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+{% block title %}Add Questions{% endblock %}
 
-    <form method="POST">
-        <label for="question">Question:</label>
-        <textarea name="question" rows="20" cols="50" placeholder="Type question here" required></textarea>
-        <br>
-        <label for="marks">Marks:</label>
-        <input type="number" name="marks" required><br>
-        <input type="radio" id="radioMandatory" checked="checked" name="type" value="Mandatory">
-        <label for="html">Mandatory</label><br>
-        <input type="radio" id="radioOptional" name="type" value="Optional">
-        <label for="css">Optional</label><br>
-        <input type="submit" value="Add Question">
-    </form>
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-body">
+            <h1 class="card-title">Add Questions for Assignment: {{ assignment.topic }}</h1>
 
-    <h2>Existing Questions:</h2>
-    <ul>
-        {% for question in questions %}
-            <li>{{ question.question }} - Marks: {{ question.marks }}
-                <a href="{{ url_for('add_test_cases', question_id=question.id) }}">Add Test Cases</a>
-            </li>
-        {% endfor %}
-    </ul>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                    </ul>
+                {% endif %}
+            {% endwith %}
 
-    <a href="{{ url_for('create_assignment') }}">Back to Create Assignment</a>
-    <br>
-    <a href="{{ url_for('logout') }}" class="btn btn-secondary">Logout</a>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
-</body>
-</html>
+            <form method="POST" class="mt-4">
+                <div class="mb-3">
+                    <label for="question" class="form-label">Question:</label>
+                    <textarea name="question" class="form-control" rows="10" placeholder="Type question here" required></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label for="marks" class="form-label">Marks:</label>
+                    <input type="number" name="marks" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input type="radio" id="radioMandatory" class="form-check-input" checked="checked" name="type" value="Mandatory">
+                        <label class="form-check-label" for="radioMandatory">Mandatory</label>
+                    </div>
+                    <div class="form-check">
+                        <input type="radio" id="radioOptional" class="form-check-input" name="type" value="Optional">
+                        <label class="form-check-label" for="radioOptional">Optional</label>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Add Question</button>
+            </form>
+
+            <h2 class="mt-4">Existing Questions:</h2>
+            <div class="list-group">
+                {% for question in questions %}
+                    <div class="list-group-item">
+                        <h5 class="mb-1">{{ question.question }}</h5>
+                        <p class="mb-1">Marks: {{ question.marks }}</p>
+                        <a href="{{ url_for('add_test_cases', question_id=question.id) }}" class="btn btn-sm btn-primary">Add Test Cases</a>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <div class="mt-4">
+                <a href="{{ url_for('create_assignment') }}" class="btn btn-secondary">Back to Create Assignment</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

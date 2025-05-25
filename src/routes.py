@@ -403,7 +403,7 @@ def view_assignment_student(assignment_id):
             'testcases': testcases,
             'testcase_submissions': testcase_submissions  # Storing test case outputs
         })
-    print(question_details)
+    # print(question_details)
     return render_template('view_assignment_student.html',
                            assignment=assignment,
                            question_details=question_details,
@@ -589,7 +589,7 @@ def upload_submission(question_id, assignment_id):
                 db.session.add(submission)
                 db.session.commit()
 
-                flash(f"File uploaded and evaluated. You received {marks} marks.")
+        flash(f"File uploaded and evaluated. You received {marks} marks.")
         return redirect(url_for('view_assignment_student',
                                 assignment_id=assignment_id))
 

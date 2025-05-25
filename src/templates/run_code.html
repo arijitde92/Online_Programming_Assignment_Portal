@@ -52,7 +52,7 @@
                                     <span class="badge bg-danger">Incorrect</span>
                                 {% endif %}
                             </td>
-                            <td>{{ submission.feedback | safe }}</td>
+                            <td><pre>{{ submission.feedback | safe }}</pre></td>
                         </tr>
                     {% endfor %}
                 </tbody>

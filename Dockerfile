@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y libpq-dev build-essential
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV SECRET_KEY="abcd1234"
-ENV SQLALCHEMY_DATABASE_URI="mysql+mysqlconnector://avnadmin:AVNS_LF2LhgmUdSoMWNcGWhI@mysql-assignment-evaluator-assignment-evaluator.b.aivencloud.com:19148/assignment_evaluator"
 ENV SQLALCHEMY_TRACK_MODIFICATIONS="False"
 
 # Create and set the working directory

@@ -3,6 +3,7 @@ An Flask + PostGres WebApp for upload, submission and checking of Assignments. T
 
 Default Teacher login credentials -
 Username - arijitde2050@gmail.com
+
 Password - abcd1234
 
 ## See Live Demo

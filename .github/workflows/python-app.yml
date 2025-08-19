@@ -9,6 +9,14 @@ on:
   pull_request:
     branches: [ "main" ]
 
+env:
+  SQLALCHEMY_DATABASE_URI=${{
+    secrets.SQLALCHEMY_DATABASE_URI
+  }}
+  SQLALCHEMY_TRACK_MODIFICATIONS=False
+  FLASK_APP=src/app.py
+  FLASK_ENV=development
+  SECRET_KEY=abcd1234
 permissions:
   contents: read
 

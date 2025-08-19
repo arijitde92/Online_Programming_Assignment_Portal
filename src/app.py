@@ -1,7 +1,7 @@
 
 import os
 from flask import Flask
-from src.models import db, Teacher
+from models import db, Teacher
 from flask_bcrypt import Bcrypt
 from dotenv import load_dotenv
 

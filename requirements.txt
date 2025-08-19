@@ -85,3 +85,5 @@ langchain-community
 langchain-anthropic
 langgraph
 textwrap3
+pytest
+ruff

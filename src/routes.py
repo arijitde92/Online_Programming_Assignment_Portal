@@ -1,6 +1,5 @@
 import subprocess
 
-from IPython.utils.capture import capture_output
 from flask import (
     render_template,
     request,
@@ -8,7 +7,6 @@ from flask import (
     url_for,
     flash,
     session,
-    make_response,
     Response,
 )
 from flask_login import (
@@ -19,9 +17,8 @@ from flask_login import (
     current_user,
 )
 from werkzeug.utils import secure_filename
-from subprocess import Popen, PIPE, run
+from subprocess import Popen, PIPE
 from sqlalchemy.sql import func
-from wtforms.validators import optional
 
 from forms import StudentSignUpForm, StudentLoginForm, TeacherLoginForm
 from models import Student, Teacher, Assignment, Question, Testcase, Submission
@@ -102,9 +99,9 @@ def student_login():
     form = StudentLoginForm()
     if form.validate_on_submit():
         student = Student.query.filter_by(email_id=form.email_id.data).first()
-        if student and bcrypt.check_password_hash(student.password, form.password.data):
+        if student and bcrypt.check_password_hash(student.password, form.password.data):      
             # Create a unique identifier combining type and id
-            user_id = f"student:{student.id}"
+            # user_id = f"student:{student.id}"
             login_user(student, remember=True)
             flash("Login successful!", "success")
             return redirect(url_for("student_dashboard", student_id=student.id))
@@ -118,9 +115,9 @@ def teacher_login():
     form = TeacherLoginForm()
     if form.validate_on_submit():
         teacher = Teacher.query.filter_by(email=form.email.data).first()
-        if teacher and bcrypt.check_password_hash(teacher.password, form.password.data):
+        if teacher and bcrypt.check_password_hash(teacher.password, form.password.data):      
             # Create a unique identifier combining type and id
-            user_id = f"teacher:{teacher.id}"
+            # user_id = f"teacher:{teacher.id}"
             login_user(teacher, remember=True)
             flash("Login successful!", "success")
             return redirect(url_for("teacher_dashboard"))
@@ -587,7 +584,7 @@ def upload_submission(question_id, assignment_id):
                 )
                 try:
                     output, errors = run_process.communicate(timeout=10)
-                except subprocess.TimeoutExpired as t_err:
+                except subprocess.TimeoutExpired:
                     flash("Code Timeout during runtime", "error")
                     return redirect(
                         url_for("view_assignment_student", assignment_id=assignment_id)
@@ -600,7 +597,7 @@ def upload_submission(question_id, assignment_id):
                     output, errors = run_process.communicate(
                         timeout=10, input=test_case
                     )
-                except subprocess.TimeoutExpired as t_err:
+                except subprocess.TimeoutExpired:
                     flash("Code Timeout during runtime", "error")
                     return redirect(
                         url_for("view_assignment_student", assignment_id=assignment_id)
@@ -621,7 +618,7 @@ def upload_submission(question_id, assignment_id):
                     output, errors = run_process.communicate(
                         timeout=10, input=test_case
                     )
-                except subprocess.TimeoutExpired as t_err:
+                except subprocess.TimeoutExpired:
                     flash("Code Timeout during runtime", "error")
                     return redirect(
                         url_for("view_assignment_student", assignment_id=assignment_id)
@@ -790,7 +787,7 @@ def run_code(question_id, assignment_id):
                 )
                 try:
                     output, errors = run_process.communicate(timeout=10)
-                except subprocess.TimeoutExpired as t_err:
+                except subprocess.TimeoutExpired:
                     return render_template(
                         "run_code.html",
                         assignment_id=assignment_id,
@@ -816,7 +813,7 @@ def run_code(question_id, assignment_id):
                     output, errors = run_process.communicate(
                         timeout=10, input=test_case
                     )
-                except subprocess.TimeoutExpired as t_err:
+                except subprocess.TimeoutExpired:
                     return render_template(
                         "run_code.html",
                         assignment_id=assignment_id,
@@ -841,7 +838,7 @@ def run_code(question_id, assignment_id):
                     output, errors = run_process.communicate(
                         timeout=10, input=test_case
                     )
-                except subprocess.TimeoutExpired as t_err:
+                except subprocess.TimeoutExpired:
                     return render_template(
                         "run_code.html",
                         assignment_id=assignment_id,
@@ -920,7 +917,7 @@ def run_code(question_id, assignment_id):
                                     "Unable to analyze test case mismatch."
                                 )
                             submission_data["status"] = "Incorrect"
-                    except Exception as err:
+                    except Exception:
                         if output == desired_output:
                             submission_data["status"] = "Correct"
                         else:
